@@ -1,7 +1,9 @@
 import json
 import typing
 
-from aiohttp.web_exceptions import HTTPUnprocessableEntity
+import aiohttp_session
+from aiohttp.web_exceptions import HTTPUnprocessableEntity, HTTPForbidden, HTTPMethodNotAllowed, HTTPConflict, \
+    HTTPNotFound, HTTPBadRequest, HTTPUnauthorized
 from aiohttp.web_middlewares import middleware
 from aiohttp_apispec import validation_middleware
 
@@ -33,6 +35,46 @@ async def error_handling_middleware(request: "Request", handler):
             message=e.reason,
             data=json.loads(e.text),
         )
+
+    except HTTPBadRequest as e:
+        return error_json_response(
+            http_status=400,
+            status=HTTP_ERROR_CODES[400],
+        )
+
+    except HTTPUnauthorized as e:
+        return error_json_response(
+            http_status=401,
+            status=HTTP_ERROR_CODES[401],
+        )
+
+    except HTTPForbidden as e:
+        return error_json_response(
+            http_status=403,
+            status=HTTP_ERROR_CODES[403],
+            message=e.reason,
+        )
+
+    except HTTPNotFound as e:
+        return error_json_response(
+            http_status=404,
+            status=HTTP_ERROR_CODES[403],
+            message=e.reason,
+        )
+
+    except HTTPMethodNotAllowed as e:
+        return error_json_response(
+            http_status=405,
+            status=HTTP_ERROR_CODES[405],
+            message=e.reason,
+        )
+
+    except HTTPConflict as e:
+        return error_json_response(
+            http_status=409,
+            status=HTTP_ERROR_CODES[409],
+        )
+
     # TODO: обработать все исключения-наследники HTTPException и отдельно Exception, как server error
     #  использовать текст из HTTP_ERROR_CODES
 
@@ -40,3 +82,4 @@ async def error_handling_middleware(request: "Request", handler):
 def setup_middlewares(app: "Application"):
     app.middlewares.append(error_handling_middleware)
     app.middlewares.append(validation_middleware)
+    app.middlewares.append(aiohttp_session.session_middleware(aiohttp_session.SimpleCookieStorage()))
